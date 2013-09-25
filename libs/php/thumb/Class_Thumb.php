@@ -12,7 +12,9 @@
  * example:
  *
  * $thumb = new Class_Thumb();
- * $thumb->path($path)->resize($width, $height)->execute();
+ * $thumb->path($path)->savePath("/home/data/thumb/")->resize($width, $height)->execute(); //thumb save to save path.
+ * or
+ * $thumb->path($path)->resize($width, $height)->execute(); //thumb save to img path.
  * if($thumb->isError()) {
  *     die("resize img error.");
  * }
@@ -21,12 +23,7 @@
  *
  *
  * note:
- * the Class_Tag_Store is demo, so you need to implement new one.
- * method:
- * get - get document tags.
- * remove - remove document tags and update count.
- * add - add document tags and update count.
- * make - make a new tag.
+ * resize image to new, if set savePath the new save this path.
  *
  */
 
@@ -37,6 +34,8 @@ class Class_Thumb {
 	private $info;
 	private $im;
 	private $size;
+	private $path;
+	private $savePath = null;
 	private $thumbSize;
 	private $error = false;
 
@@ -56,10 +55,20 @@ class Class_Thumb {
 		return $this;
 	}
 
+	public function savePath($savePath) {
+		$this->savePath = $savePath;
+		return $this;
+	}	
+
 	public function execute() {
 		
-		if($this->limitWidth != 0 || $this->limitHeight != 0)
-				$this->realPath = sprintf("%s_%s_%s", $this->path, $this->limitWidth, $this->limitHeight);
+		if($this->limitWidth != 0 || $this->limitHeight != 0) {
+				$pathinfo = pathinfo($this->path);
+				if($this->savePath != null)
+					$this->realPath = sprintf("%s%s_%s_%s", $this->savePath, $pathinfo['filename'], $this->limitWidth, $this->limitHeight);
+				else
+					$this->realPath = sprintf("%s_%s_%s", $this->path, $this->limitWidth, $this->limitHeight);
+		}
 		else {
 			$this->realPath = $this->path;
 		}
