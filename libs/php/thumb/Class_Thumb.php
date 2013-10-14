@@ -2,28 +2,33 @@
 
 /**
  * author: langwan@chengxufan.com
- * version: 2013.09.20.15.12
+ * version: 2013.10.13.18.29
  *
  * resize image
  *
  * url src is http://www.chengxufan.com/img/abc
- * resize url is http://www.chengxufan.com/img/abc/200/200
+ * access to :
+ * auto width and fixed height
+ * http://www.chengxufan.com/img/abc_f-0-200
+ * auto height and fixed width
+ * http://www.chengxufan.com/img/abc_f-200-0
+ * scaled down fill the background
+ * http://www.chengxufan.com/img/abc_a-200-200
+ * cut off the excess part
+ * http://www.chengxufan.com/img/abc_c-200-200 
+ * resize image drawing this
+ * /img/abc_r-200-200
  *
  * example:
- *
- * $thumb = new Class_Thumb();
- * $thumb->path($path)->savePath("/home/data/thumb/")->resize($width, $height)->execute(); //thumb save to save path.
- * or
- * $thumb->path($path)->resize($width, $height)->execute(); //thumb save to img path.
- * if($thumb->isError()) {
- *     die("resize img error.");
- * }
- * header(sprintf("Content-Type: %s", $thumb->header()));
- * echo $thumb->body();
- *
- *
- * note:
- * resize image to new, if set savePath the new save this path.
+ * <?php
+ * 	$thumb = new Class_Thumb();
+ * 	$thumb->path($path)->execute();
+ * 	if($thumb->isError()) {
+ *     		die("resize img error.");
+ * 	}
+ * 	header(sprintf("Content-Type: %s", $thumb->header()));
+ * 	echo $thumb->body();
+ * ?>
  *
  */
 
@@ -34,44 +39,157 @@ class Class_Thumb {
 	private $info;
 	private $im;
 	private $size;
-	private $path;
-	private $savePath = null;
 	private $thumbSize;
 	private $error = false;
+	private $cmd = null;
+	private $limitWidth = 0;
+	private $limitHeight = 0;
+	private $bgcolor = 'ffffff';
 
 	public function force($b) {
 		$this->force = $b;
 		return $this;
 	}
 
-	public function resize($width, $height) {
-		$this->limitWidth = $width;
-		$this->limitHeight = $height;
+	public function path($uri) {
+
+		$items = explode("_", $uri);
+		$this->path = $items[0];
+
+		if(count($items) == 1) {
+			$this->cmd = null;
+			return $this;
+		}
+
+		$this->path = $items[0];
+		$cmd = $items[1];
+		$params = explode("-", $cmd);
+		$this->cmd = $params[0];
+
+		if($this->cmd == 'a') {
+			$this->limitWidth = isset($params[1]) ? $params[1] : 0;
+			$this->limitHeight = isset($params[2]) ? $params[2] : 0;
+			$this->bgcolor = isset($params[3]) ? $params[3] : 0;
+
+		} else {
+			$this->limitWidth = isset($params[1]) ? $params[1] : 0;
+			$this->limitHeight = isset($params[2]) ? $params[2] : 0;			
+		}
+
 		return $this;
 	}
 
-	public function path($path) {
-		$this->path = $path;
-		return $this;
+	public function resize() {
+	
+
+		$sw = $this->info[0];
+		$sh = $this->info[1];
+		$x = $y = $sx = $sy = 0;
+		$cw = $w = $this->limitWidth;
+		$ch = $h = $this->limitHeight;
+		$size = array('cw' => $cw, 'ch' => $ch, 'x' => $x, 'y' => $y, 'w' => $w, 'h' => $h, 'sx' => $sx, 'sy' => $sy, 'sw' => $sw, 'sh' => $sh);
+
+		return $size;
 	}
 
-	public function savePath($savePath) {
-		$this->savePath = $savePath;
-		return $this;
-	}	
+	public function auto() {
+
+		$sw = $this->info[0];
+		$sh = $this->info[1];	
+		$rw = $sw / $this->limitWidth;
+		$rh = $sh / $this->limitHeight;	
+		$cw = $this->limitWidth;
+		$ch = $this->limitHeight;
+		$sx = $sy = 0;
+
+		if($rw == $rh) {
+			return $this->resize();
+		} else if($rw > $rh) {
+			$w = $cw;
+			$x = 0;
+			$h = $sh / $rw;
+			$y = ($ch - $h) / 2;
+		} else if($rw < $rh) {
+			$h = $ch;
+			$y = 0;
+			$w = $sw / $rh;
+			$x = ($cw - $w) / 2;
+		}
+		$size = array('cw' => $cw, 'ch' => $ch, 'x' => $x, 'y' => $y, 'w' => $w, 'h' => $h, 'sx' => $sx, 'sy' => $sy, 'sw' => $sw, 'sh' => $sh);
+	
+		return $size;
+	}
+
+	public function fixed() {
+
+		$autoWidth = $this->limitWidth == 0 ? true : false;
+
+		$sw = $this->info[0];
+		$sh = $this->info[1];
+
+		$x = $y = $sx = $sy = 0;
+	
+		if($autoWidth) {
+			$h = $this->limitHeight;
+			$r = $sh / $this->limitHeight;
+			$w = $sw / $r;
+
+		} else {
+			$w = $this->limitWidth;
+			$r = $sw / $this->limitWidth;
+			$h = $sh / $r;
+		}
+
+		$cw = $w;
+		$ch = $h;
+
+		$size = array('cw' => $cw, 'ch' => $ch, 'x' => $x, 'y' => $y, 'w' => $w, 'h' => $h, 'sx' => $sx, 'sy' => $sy, 'sw' => $sw, 'sh' => $sh);
+
+		return $size;
+	}
+
+	public function cut() {
+
+		$autoWidth = $this->limitWidth == 0 ? true : false;
+
+		$width = $this->info[0];
+		$height = $this->info[1];
+
+		$rw = $width / $this->limitWidth;
+		$rh = $height / $this->limitHeight;
+
+		$x = $y = 0;
+
+		$cw = $w = $this->limitWidth;
+		$ch = $h = $this->limitHeight;
+
+		if($rw == $rh) {
+			return $this->resize();
+		} else if($rw > $rh) {
+			$sy = 0;
+			$sh = $height;
+			$sw = $w * $rh;
+			$sx = ($width - $sw) / 2;
+		} else if($rw < $rh) {
+			$sx = 0;
+			$sw = $width;
+			$sh = $h * $rw;
+			$sy = ($height - $sh) / 2;			
+		}
+
+		$size = array('cw' => $cw, 'ch' => $ch, 'x' => $x, 'y' => $y, 'w' => $w, 'h' => $h, 'sx' => $sx, 'sy' => $sy, 'sw' => $sw, 'sh' => $sh);
+
+		return $size;
+	}
 
 	public function execute() {
 		
-		if($this->limitWidth != 0 || $this->limitHeight != 0) {
-				$pathinfo = pathinfo($this->path);
-				if($this->savePath != null)
-					$this->realPath = sprintf("%s%s_%s_%s", $this->savePath, $pathinfo['filename'], $this->limitWidth, $this->limitHeight);
-				else
-					$this->realPath = sprintf("%s_%s_%s", $this->path, $this->limitWidth, $this->limitHeight);
-		}
-		else {
+		if($this->cmd == null) {
 			$this->realPath = $this->path;
+			return;
 		}
+		
+		$this->realPath = sprintf("%s_%s_%s_%s_%s", $this->path, $this->cmd, $this->limitWidth, $this->limitHeight, $this->bgcolor);
 
 		if($this->force != true) {
 			if(file_exists($this->realPath)) {
@@ -89,19 +207,45 @@ class Class_Thumb {
 		}
 
 		$this->init();
-		$this->resizeImg();
+		$size = array();
+		if($this->cmd == 'a') {
+			$size = $this->auto();
+		} else if($this->cmd == 'f') {
+			$size = $this->fixed();	
+		} else if($this->cmd == 'r') {
+			$size = $this->resize();
+		} else if($this->cmd == 'c') {
+			$size = $this->cut();
+		}
+		$this->resizeImg($size);
 	}
 
 	public function isError() {
 		return $this->error == true ? true : false;
 	}
 
-	public function resizeImg() {
-	
-		$this->thumbSize = $this->getThumbSize(array($this->limitWidth, $this->limitHeight));
-		$new = imagecreatetruecolor($this->thumbSize[0], $this->thumbSize[1]);
-	
-		imagecopyresampled($new, $this->im, 0, 0, 0, 0, $this->thumbSize[0], $this->thumbSize[1], $this->info[0], $this->info[1]);
+	function hex2rgb( $colour ) {
+		if ( strlen( $colour ) == 6 ) {
+			list( $r, $g, $b ) = array( $colour[0] . $colour[1], $colour[2] . $colour[3], $colour[4] . $colour[5] );
+		} elseif ( strlen( $colour ) == 3 ) {
+			list( $r, $g, $b ) = array( $colour[0] . $colour[0], $colour[1] . $colour[1], $colour[2] . $colour[2] );
+		} else {
+			return false;
+		}
+		$r = hexdec( $r );
+		$g = hexdec( $g );
+		$b = hexdec( $b );
+		return array( 'red' => $r, 'green' => $g, 'blue' => $b );
+	}
+
+	public function resizeImg($size) {
+		$new = imagecreatetruecolor($size['cw'], $size['ch']);
+		if($this->bgcolor != '000000') {
+			$rgb = $this->hex2rgb($this->bgcolor);
+			$color = imagecolorAllocate($new, $rgb['red'], $rgb['green'], $rgb['blue']);
+			imagefill($new, 0, 0, $color); 
+		}
+		imagecopyresampled($new, $this->im, $size['x'], $size['y'], $size['sx'], $size['sy'], $size['w'], $size['h'], $size['sw'], $size['sh']);
 		$this->save($new);		
 	}
 
@@ -110,12 +254,16 @@ class Class_Thumb {
 	}
 
 	public function body() {
-		return file_get_contents($this->realPath);
+		if(file_exists($this->realPath))
+			return @file_get_contents($this->realPath);
+		else 
+			return 'error';
 	}
 
 
 	public function getSrcInfo() {
-
+		if(!file_exists($this->path))
+			return false;
 		$this->info = getimagesize($this->path);		
 		return true;
 	}
