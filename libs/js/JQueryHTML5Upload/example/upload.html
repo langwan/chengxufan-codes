@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>HTML5多文件上传</title>
+<script src="jquery-1.9.1.js"></script>
+<style>
+	ul, li {
+		list-style-type: none;
+	}
+	li {
+		float: left;
+		margin: 10px;
+	}
+	.clearfix {
+		clear:both;
+	}
+	.hidden {
+		display: none;
+	}
+	#upload_box img, #upload_box2 img {
+		width:50px;
+		height: 50px;
+	}
+</style>
+</head>
+<body>
+
+<form>
+	<p>
+		<button type="button" onclick="gfile.click();">自定义上传按钮</button>
+		<input type="file" id="gfile" class="hidden" name="nnn" value="" multiple="true" />
+	</p>
+</form>
+
+<ul id="upload_box">
+	
+</ul>
+<div class="clearfix"></div>
+
+<hr />
+
+<form>
+	<p>
+		<button type="button" onclick="gfile2.click();">自定义上传按钮</button>
+		<input type="file" id="gfile2" class="hidden" name="nnn" value="" multiple="true" />
+	</p>
+</form>
+
+
+<ul id="upload_box2">
+	
+</ul>
+<div class="clearfix"></div>
+
+<script>
+$(function() {
+	$('#gfile').upload({
+		url: 'do_upload.html?1',
+		add: function(id) {
+			var item = '<li gid="'+id+'"><img src="default.png" /></li>';
+			$('#upload_box').append(item);
+		},
+		success: function(id, json) {
+			var item = '<li gid="'+id+'"><img src="'+json.path+'" /><input type="hidden" name="paths[]" class="hidden" value="'+json.path+'" /></li>';
+			$('#upload_box').find('li[gid='+id+']').html(item);
+		}
+	});
+	$('#gfile2').upload({
+		url: 'do_upload.html?2',
+		add: function(id) {
+			var item = '<li gid="'+id+'"><img src="default.png" /></li>';
+			$('#upload_box2').append(item);
+		},
+		success: function(id, json) {
+			var item = '<li gid="'+id+'"><img src="'+json.path+'" /><input type="hidden" name="paths[]" class="hidden" value="'+json.path+'" /></li>';
+			$('#upload_box2').find('li[gid='+id+']').html(item);
+		}
+	})
+});
+</script>
+
+<script src="cxf.upload.js"></script>
